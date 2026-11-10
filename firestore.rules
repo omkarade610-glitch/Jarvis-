@@ -1,0 +1,232 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidUserProfile(data) {
+      return data.assistantName is string && data.assistantName.size() >= 1 && data.assistantName.size() <= 60 &&
+             data.ownerName is string && data.ownerName.size() >= 1 && data.ownerName.size() <= 60 &&
+             (!('language' in data) || (data.language is string && data.language.size() <= 40)) &&
+             (!('voiceSpeed' in data) || data.voiceSpeed is number) &&
+             (!('voicePitch' in data) || data.voicePitch is number) &&
+             (!('wakeWordEnabled' in data) || data.wakeWordEnabled is bool) &&
+             (!('themeMode' in data) || (data.themeMode is string && data.themeMode.size() <= 20)) &&
+             (!('avatarUrl' in data) || (data.avatarUrl is string && data.avatarUrl.size() <= 500));
+    }
+
+    function isValidConversation(data) {
+      return data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+             (!('language' in data) || (data.language is string && data.language.size() <= 40)) &&
+             (!('lastMessage' in data) || (data.lastMessage is string && data.lastMessage.size() <= 1000));
+    }
+
+    function isValidChatMessage(data) {
+      return (data.sender == 'user' || data.sender == 'jarvis') &&
+             data.text is string && data.text.size() <= 50000 &&
+             (!('codeLanguage' in data) || (data.codeLanguage is string && data.codeLanguage.size() <= 50)) &&
+             (!('hasImage' in data) || data.hasImage is bool) &&
+             (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() <= 2000));
+    }
+
+    function isValidProject(data) {
+      return data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+             (data.projectType in ['coding', 'website', 'app', 'anime', 'drawing', '3d']) &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 2000)) &&
+             (!('language' in data) || (data.language is string && data.language.size() <= 50)) &&
+             (!('content' in data) || (data.content is string && data.content.size() <= 100000)) &&
+             (!('status' in data) || (data.status in ['draft', 'building', 'completed']));
+    }
+
+    function isValidMemoryItem(data) {
+      return data.category is string && data.category.size() >= 1 && data.category.size() <= 60 &&
+             data.key is string && data.key.size() >= 1 && data.key.size() <= 120 &&
+             data.value is string && data.value.size() >= 1 && data.value.size() <= 5000 &&
+             (!('isPrivate' in data) || data.isPrivate is bool);
+    }
+
+    function isValidCharacterProfile(data) {
+      return data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+             data.personality is string && data.personality.size() >= 1 && data.personality.size() <= 2000 &&
+             (!('ageCategory' in data) || (data.ageCategory is string && data.ageCategory.size() <= 50)) &&
+             (!('powers' in data) || (data.powers is string && data.powers.size() <= 2000)) &&
+             (!('costume' in data) || (data.costume is string && data.costume.size() <= 2000)) &&
+             (!('hairstyle' in data) || (data.hairstyle is string && data.hairstyle.size() <= 500)) &&
+             (!('accessories' in data) || (data.accessories is string && data.accessories.size() <= 1000)) &&
+             (!('weapons' in data) || (data.weapons is string && data.weapons.size() <= 1000)) &&
+             (!('bio' in data) || (data.bio is string && data.bio.size() <= 5000)) &&
+             (!('referenceNotes' in data) || (data.referenceNotes is string && data.referenceNotes.size() <= 3000));
+    }
+
+    match /users/{userId} {
+      allow get, list: if isSignedIn() && request.auth.uid == userId;
+
+      allow create: if isSignedIn() &&
+                       request.auth.uid == userId &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll(['userId', 'assistantName', 'ownerName', 'createdAt', 'updatedAt']) &&
+                       incoming().createdAt is timestamp &&
+                       incoming().createdAt <= request.time &&
+                       incoming().updatedAt is timestamp &&
+                       incoming().updatedAt <= request.time &&
+                       isValidUserProfile(incoming());
+
+      allow update: if isSignedIn() &&
+                       request.auth.uid == userId &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt is timestamp &&
+                       incoming().updatedAt <= request.time &&
+                       isValidUserProfile(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['assistantName', 'ownerName', 'language', 'voiceSpeed', 'voicePitch', 'wakeWordEnabled', 'themeMode', 'avatarUrl', 'updatedAt']);
+
+      allow delete: if isSignedIn() && request.auth.uid == userId;
+
+      match /conversations/{conversationId} {
+        allow get, list: if isSignedIn() && request.auth.uid == userId;
+
+        allow create: if isSignedIn() &&
+                         request.auth.uid == userId &&
+                         isValidId(conversationId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['userId', 'title', 'createdAt', 'updatedAt']) &&
+                         incoming().createdAt is timestamp &&
+                         incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp &&
+                         incoming().updatedAt <= request.time &&
+                         isValidConversation(incoming());
+
+        allow update: if isSignedIn() &&
+                         request.auth.uid == userId &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp &&
+                         incoming().updatedAt <= request.time &&
+                         isValidConversation(incoming()) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'language', 'lastMessage', 'updatedAt']);
+
+        allow delete: if isSignedIn() && request.auth.uid == userId;
+
+        match /messages/{messageId} {
+          allow get, list: if isSignedIn() && request.auth.uid == userId;
+
+          allow create: if isSignedIn() &&
+                           request.auth.uid == userId &&
+                           isValidId(messageId) &&
+                           incoming().userId == request.auth.uid &&
+                           incoming().keys().hasAll(['userId', 'sender', 'text', 'createdAt']) &&
+                           incoming().createdAt is timestamp &&
+                           incoming().createdAt <= request.time &&
+                           isValidChatMessage(incoming());
+
+          allow update: if isSignedIn() &&
+                           request.auth.uid == userId &&
+                           incoming().userId == existing().userId &&
+                           incoming().createdAt == existing().createdAt &&
+                           isValidChatMessage(incoming()) &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['text', 'codeLanguage', 'hasImage', 'imageUrl']);
+
+          allow delete: if isSignedIn() && request.auth.uid == userId;
+        }
+      }
+
+      match /projects/{projectId} {
+        allow get, list: if isSignedIn() && request.auth.uid == userId;
+
+        allow create: if isSignedIn() &&
+                         request.auth.uid == userId &&
+                         isValidId(projectId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['userId', 'title', 'projectType', 'createdAt', 'updatedAt']) &&
+                         incoming().createdAt is timestamp &&
+                         incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp &&
+                         incoming().updatedAt <= request.time &&
+                         isValidProject(incoming());
+
+        allow update: if isSignedIn() &&
+                         request.auth.uid == userId &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp &&
+                         incoming().updatedAt <= request.time &&
+                         isValidProject(incoming()) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'language', 'content', 'status', 'updatedAt']);
+
+        allow delete: if isSignedIn() && request.auth.uid == userId;
+      }
+
+      match /memories/{memoryId} {
+        allow get, list: if isSignedIn() && request.auth.uid == userId;
+
+        allow create: if isSignedIn() &&
+                         request.auth.uid == userId &&
+                         isValidId(memoryId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['userId', 'category', 'key', 'value', 'createdAt', 'updatedAt']) &&
+                         incoming().createdAt is timestamp &&
+                         incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp &&
+                         incoming().updatedAt <= request.time &&
+                         isValidMemoryItem(incoming());
+
+        allow update: if isSignedIn() &&
+                         request.auth.uid == userId &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp &&
+                         incoming().updatedAt <= request.time &&
+                         isValidMemoryItem(incoming()) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['category', 'key', 'value', 'isPrivate', 'updatedAt']);
+
+        allow delete: if isSignedIn() && request.auth.uid == userId;
+      }
+
+      match /characters/{characterId} {
+        allow get, list: if isSignedIn() && request.auth.uid == userId;
+
+        allow create: if isSignedIn() &&
+                         request.auth.uid == userId &&
+                         isValidId(characterId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['userId', 'name', 'personality', 'createdAt', 'updatedAt']) &&
+                         incoming().createdAt is timestamp &&
+                         incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp &&
+                         incoming().updatedAt <= request.time &&
+                         isValidCharacterProfile(incoming());
+
+        allow update: if isSignedIn() &&
+                         request.auth.uid == userId &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp &&
+                         incoming().updatedAt <= request.time &&
+                         isValidCharacterProfile(incoming()) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['name', 'ageCategory', 'personality', 'powers', 'costume', 'hairstyle', 'accessories', 'weapons', 'bio', 'referenceNotes', 'updatedAt']);
+
+        allow delete: if isSignedIn() && request.auth.uid == userId;
+      }
+    }
+  }
+}

@@ -1,0 +1,131 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile and JARVIS personalization preferences",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Authenticated user UID" },
+        "assistantName": { "type": "string", "description": "Custom name for JARVIS (e.g., JARVIS, FRIDAY)" },
+        "ownerName": { "type": "string", "description": "Owner name (e.g., Tony Stark, Sir)" },
+        "language": { "type": "string", "description": "Primary communication language" },
+        "voiceSpeed": { "type": "number", "description": "Speech rate multiplier" },
+        "voicePitch": { "type": "number", "description": "Speech pitch multiplier" },
+        "wakeWordEnabled": { "type": "boolean", "description": "Whether voice wake detection is toggled" },
+        "themeMode": { "type": "string", "enum": ["system", "dark", "light", "hologram"], "description": "UI visual theme" },
+        "avatarUrl": { "type": "string", "description": "Avatar image URL or resource key" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp via serverTimestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update timestamp via serverTimestamp" }
+      },
+      "required": ["userId", "assistantName", "ownerName", "createdAt", "updatedAt"]
+    },
+    "Conversation": {
+      "title": "Conversation",
+      "description": "AI Chat conversation session",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner user UID" },
+        "title": { "type": "string", "description": "Conversation topic title" },
+        "language": { "type": "string", "description": "Language used for dialogue" },
+        "lastMessage": { "type": "string", "description": "Snippet of last message" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update timestamp" }
+      },
+      "required": ["userId", "title", "createdAt", "updatedAt"]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "Single message in a conversation thread",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner user UID" },
+        "sender": { "type": "string", "enum": ["user", "jarvis"], "description": "Message sender" },
+        "text": { "type": "string", "description": "Message text content" },
+        "codeLanguage": { "type": "string", "description": "Code snippet language if applicable" },
+        "hasImage": { "type": "boolean", "description": "Whether an image is attached" },
+        "imageUrl": { "type": "string", "description": "Optional image URL or reference" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp" }
+      },
+      "required": ["userId", "sender", "text", "createdAt"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "Studio project for coding, website, app, anime, drawing, or 3D",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner user UID" },
+        "title": { "type": "string", "description": "Project title" },
+        "projectType": { "type": "string", "enum": ["coding", "website", "app", "anime", "drawing", "3d"], "description": "Studio category" },
+        "description": { "type": "string", "description": "Description of project goals" },
+        "language": { "type": "string", "description": "Coding language or framework" },
+        "content": { "type": "string", "description": "Generated code, storyboard, or script content" },
+        "status": { "type": "string", "enum": ["draft", "building", "completed"], "description": "Project state" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Timestamp" }
+      },
+      "required": ["userId", "title", "projectType", "createdAt", "updatedAt"]
+    },
+    "MemoryItem": {
+      "title": "MemoryItem",
+      "description": "Personal knowledge item or preference remembered by JARVIS",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner user UID" },
+        "category": { "type": "string", "description": "Category (e.g., General, Work, Code, Personal, Preference)" },
+        "key": { "type": "string", "description": "Topic or key phrase" },
+        "value": { "type": "string", "description": "Details remembered" },
+        "isPrivate": { "type": "boolean", "description": "Whether hidden during standard operations" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Timestamp" }
+      },
+      "required": ["userId", "category", "key", "value", "createdAt", "updatedAt"]
+    },
+    "CharacterProfile": {
+      "title": "CharacterProfile",
+      "description": "Character profile created in AI Character Designer and used in Anime Studio",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner user UID" },
+        "name": { "type": "string", "description": "Character name" },
+        "ageCategory": { "type": "string", "description": "Age bracket (e.g. teen, adult, ancient)" },
+        "personality": { "type": "string", "description": "Traits and demeanor" },
+        "powers": { "type": "string", "description": "Abilities or powers" },
+        "costume": { "type": "string", "description": "Suit, armor, or attire description" },
+        "hairstyle": { "type": "string", "description": "Hair color and style" },
+        "accessories": { "type": "string", "description": "Gear or accessories" },
+        "weapons": { "type": "string", "description": "Signature weapons" },
+        "bio": { "type": "string", "description": "Backstory summary" },
+        "referenceNotes": { "type": "string", "description": "Visual continuity notes across scenes" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Timestamp" }
+      },
+      "required": ["userId", "name", "personality", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profile and JARVIS personalization preferences"
+    },
+    "/users/{userId}/conversations/{conversationId}": {
+      "schema": { "$ref": "#/entities/Conversation" },
+      "description": "AI Chat conversations"
+    },
+    "/users/{userId}/conversations/{conversationId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/ChatMessage" },
+      "description": "Chat messages within a conversation"
+    },
+    "/users/{userId}/projects/{projectId}": {
+      "schema": { "$ref": "#/entities/Project" },
+      "description": "User studio projects across all disciplines"
+    },
+    "/users/{userId}/memories/{memoryId}": {
+      "schema": { "$ref": "#/entities/MemoryItem" },
+      "description": "Personal memories and notes"
+    },
+    "/users/{userId}/characters/{characterId}": {
+      "schema": { "$ref": "#/entities/CharacterProfile" },
+      "description": "Saved original character designs"
+    }
+  }
+}
